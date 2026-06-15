@@ -45,8 +45,8 @@ public class RouteOptimizationService {
         depotRepository.deleteAll();
         trafficZoneRepository.deleteAll();
 
-        // Create Depot at Center (50, 50)
-        Depot depot = new Depot(null, "Main Distribution Center", 50.0, 50.0);
+        // Create Depot Hub in New Delhi Center (Lng 77.25, Lat 28.60)
+        Depot depot = new Depot(null, "Main Distribution Center", 77.25, 28.60);
         depotRepository.save(depot);
 
         // Create Vehicles
@@ -55,22 +55,21 @@ public class RouteOptimizationService {
         vehicleRepository.save(new Vehicle(null, "Toyota HiAce (Gas)", 45.0, 18.0, 1.6, 35.0, true));
         vehicleRepository.save(new Vehicle(null, "Delivery E-Bike", 15.0, 8.0, 0.8, 50.0, true));
 
-        // Create Delivery Stops
-        // Time window start/end in hours of day: e.g. 9.0 to 12.0
-        deliveryStopRepository.save(new DeliveryStop(null, "Downtown Retail Branch", 75.0, 75.0, 10.0, 9.0, 12.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Uptown Warehouse", 20.0, 80.0, 20.0, 10.0, 14.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Eastside Clinic", 80.0, 25.0, 15.0, 8.0, 11.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Westside Pharmacy", 25.0, 20.0, 25.0, 13.0, 17.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Central Tech Office", 55.0, 65.0, 8.0, 9.5, 13.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Industrial Park Factory", 85.0, 45.0, 35.0, 11.0, 15.0, 0.50, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Suburb Residential Complex", 15.0, 60.0, 12.0, 8.5, 12.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Harbor Port Terminal", 45.0, 15.0, 18.0, 14.0, 18.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Shopping Mall Plaza", 65.0, 35.0, 14.0, 10.0, 16.0, 0.25, "PENDING"));
-        deliveryStopRepository.save(new DeliveryStop(null, "Regional Hospital Center", 35.0, 75.0, 5.0, 9.0, 11.0, 0.25, "PENDING"));
+        // Create Delivery Stops with real-world Lng (X) / Lat (Y) values mapped to Delhi/NCR
+        deliveryStopRepository.save(new DeliveryStop(null, "Downtown Retail Branch", 77.375, 28.70, 10.0, 9.0, 12.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Uptown Warehouse", 77.10, 28.72, 20.0, 10.0, 14.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Eastside Clinic", 77.40, 28.50, 15.0, 8.0, 11.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Westside Pharmacy", 77.125, 28.48, 25.0, 13.0, 17.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Central Tech Office", 77.275, 28.66, 8.0, 9.5, 13.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Industrial Park Factory", 77.425, 28.58, 35.0, 11.0, 15.0, 0.50, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Suburb Residential Complex", 77.075, 28.64, 12.0, 8.5, 12.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Harbor Port Terminal", 77.225, 28.46, 18.0, 14.0, 18.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Shopping Mall Plaza", 77.325, 28.54, 14.0, 10.0, 16.0, 0.25, "PENDING"));
+        deliveryStopRepository.save(new DeliveryStop(null, "Regional Hospital Center", 77.175, 28.70, 5.0, 9.0, 11.0, 0.25, "PENDING"));
 
-        // Create initial traffic zones (one bottleneck, one complete roadblock)
-        trafficZoneRepository.save(new TrafficZone(null, 50.0, 30.0, 8.0, 5.0)); // Heavy traffic bottleneck
-        trafficZoneRepository.save(new TrafficZone(null, 35.0, 55.0, 6.0, 999.0)); // Complete roadblock
+        // Create initial traffic zones (one bottleneck, one complete roadblock) in degrees
+        trafficZoneRepository.save(new TrafficZone(null, 77.25, 28.52, 0.036, 5.0)); // Heavy traffic bottleneck (~3.5km radius)
+        trafficZoneRepository.save(new TrafficZone(null, 77.175, 28.62, 0.027, 999.0)); // Complete roadblock (~2.7km radius)
     }
 
     public void clearWorkspace() {
@@ -80,7 +79,7 @@ public class RouteOptimizationService {
         trafficZoneRepository.deleteAll();
         // Ensure at least one depot exists
         if (depotRepository.count() == 0) {
-            depotRepository.save(new Depot(null, "Main Distribution Center", 50.0, 50.0));
+            depotRepository.save(new Depot(null, "Main Distribution Center", 77.25, 28.60));
         }
     }
 
@@ -91,46 +90,117 @@ public class RouteOptimizationService {
         Depot depot = depots.get(0);
 
         List<Vehicle> activeVehicles = vehicleRepository.findByActiveTrue();
-        List<DeliveryStop> pendingStops = deliveryStopRepository.findAll(); // Optimizing all stops in list
+        List<DeliveryStop> pendingStops = deliveryStopRepository.findAll();
         List<TrafficZone> trafficZones = trafficZoneRepository.findAll();
 
         if (activeVehicles.isEmpty() || pendingStops.isEmpty()) {
             return new ArrayList<>();
         }
 
-        int n = pendingStops.size();
-        int totalNodes = n + 1; // Node 0 is Depot, Node 1..N are stops
+        // 1. Determine bounding box for dynamic coordinates scaling
+        double minLng = depot.getX();
+        double maxLng = depot.getX();
+        double minLat = depot.getY();
+        double maxLat = depot.getY();
 
-        // Build cost and duration matrices
+        for (DeliveryStop stop : pendingStops) {
+            minLng = Math.min(minLng, stop.getX());
+            maxLng = Math.max(maxLng, stop.getX());
+            minLat = Math.min(minLat, stop.getY());
+            maxLat = Math.max(maxLat, stop.getY());
+        }
+        for (TrafficZone zone : trafficZones) {
+            minLng = Math.min(minLng, zone.getX());
+            maxLng = Math.max(maxLng, zone.getX());
+            minLat = Math.min(minLat, zone.getY());
+            maxLat = Math.max(maxLat, zone.getY());
+        }
+
+        // Add 10% padding to prevent zero spans and allow margins
+        double lngSpan = maxLng - minLng;
+        double latSpan = maxLat - minLat;
+
+        if (lngSpan <= 0.0001) {
+            minLng -= 0.05;
+            maxLng += 0.05;
+            lngSpan = 0.1;
+        } else {
+            double padding = lngSpan * 0.1;
+            minLng -= padding;
+            maxLng += padding;
+            lngSpan = maxLng - minLng;
+        }
+
+        if (latSpan <= 0.0001) {
+            minLat -= 0.05;
+            maxLat += 0.05;
+            latSpan = 0.1;
+        } else {
+            double padding = latSpan * 0.1;
+            minLat -= padding;
+            maxLat += padding;
+            latSpan = maxLat - minLat;
+        }
+
+        final double fMinLng = minLng;
+        final double fLngSpan = lngSpan;
+        final double fMinLat = minLat;
+        final double fLatSpan = latSpan;
+
+        // 2. Scale traffic zones to 0-100 range
+        List<TrafficZone> scaledTrafficZones = new ArrayList<>();
+        for (TrafficZone zone : trafficZones) {
+            double sx = (zone.getX() - fMinLng) / fLngSpan * 100.0;
+            double sy = (zone.getY() - fMinLat) / fLatSpan * 100.0;
+            double sRadius = (zone.getRadius() / fLngSpan) * 100.0;
+            scaledTrafficZones.add(new TrafficZone(zone.getId(), sx, sy, sRadius, zone.getSeverity()));
+        }
+
+        int n = pendingStops.size();
+        int totalNodes = n + 1;
+
+        // Cost and duration matrices (A* paths are calculated on scaled coordinates)
         double[][] costMatrix = new double[totalNodes][totalNodes];
         double[][] durationMatrix = new double[totalNodes][totalNodes];
 
-        // Node points mapping
-        double[] xCoords = new double[totalNodes];
-        double[] yCoords = new double[totalNodes];
-        
-        xCoords[0] = depot.getX();
-        yCoords[0] = depot.getY();
-        
+        double[] xScaled = new double[totalNodes];
+        double[] yScaled = new double[totalNodes];
+
+        xScaled[0] = (depot.getX() - fMinLng) / fLngSpan * 100.0;
+        yScaled[0] = (depot.getY() - fMinLat) / fLatSpan * 100.0;
+
         for (int i = 1; i <= n; i++) {
             DeliveryStop stop = pendingStops.get(i - 1);
-            xCoords[i] = stop.getX();
-            yCoords[i] = stop.getY();
+            xScaled[i] = (stop.getX() - fMinLng) / fLngSpan * 100.0;
+            yScaled[i] = (stop.getY() - fMinLat) / fLatSpan * 100.0;
         }
 
-        // Populate matrices via A* pathfinding
+        // Populate matrices via A* pathfinding on scaled grid
         for (int i = 0; i < totalNodes; i++) {
             for (int j = 0; j < totalNodes; j++) {
                 if (i == j) {
                     costMatrix[i][j] = 0.0;
                     durationMatrix[i][j] = 0.0;
                 } else {
-                    List<double[]> legPath = pathfinder.findPath(xCoords[i], yCoords[i], xCoords[j], yCoords[j], trafficZones);
-                    double cost = pathfinder.getPathCost(legPath, trafficZones);
-                    costMatrix[i][j] = cost;
+                    List<double[]> legPath = pathfinder.findPath(xScaled[i], yScaled[i], xScaled[j], yScaled[j], scaledTrafficZones);
+                    double scaledCost = pathfinder.getPathCost(legPath, scaledTrafficZones);
+                    costMatrix[i][j] = scaledCost;
                     
-                    // Travel time (using a generic 40 units/hr average speed)
-                    durationMatrix[i][j] = cost / 40.0; 
+                    // Compute real-world distance in km for travel time estimation
+                    double realDistKm = 0.0;
+                    for (int p = 0; p < legPath.size() - 1; p++) {
+                        double[] p1 = legPath.get(p);
+                        double[] p2 = legPath.get(p + 1);
+                        double rx1 = fMinLng + (p1[0] / 100.0) * fLngSpan;
+                        double ry1 = fMinLat + (p1[1] / 100.0) * fLatSpan;
+                        double rx2 = fMinLng + (p2[0] / 100.0) * fLngSpan;
+                        double ry2 = fMinLat + (p2[1] / 100.0) * fLatSpan;
+                        realDistKm += calculateRealDistanceKm(ry1, rx1, ry2, rx2);
+                    }
+                    
+                    // Duration = distance (km) / speed (km/h)
+                    // Fallback to average speed 40km/h
+                    durationMatrix[i][j] = realDistKm / 40.0;
                 }
             }
         }
@@ -138,15 +208,15 @@ public class RouteOptimizationService {
         // Solve VRP
         GeneticAlgorithmSolver.Individual bestSolution;
         if ("SA".equalsIgnoreCase(algorithm)) {
-            bestSolution = saSolver.solve(costMatrix, durationMatrix, activeVehicles, pendingStops, depot.getX(), depot.getY());
+            bestSolution = saSolver.solve(costMatrix, durationMatrix, activeVehicles, pendingStops, xScaled[0], yScaled[0]);
         } else {
-            bestSolution = gaSolver.solve(costMatrix, durationMatrix, activeVehicles, pendingStops, depot.getX(), depot.getY());
+            bestSolution = gaSolver.solve(costMatrix, durationMatrix, activeVehicles, pendingStops, xScaled[0], yScaled[0]);
         }
 
         // Clear existing optimization results
         optimizedRouteRepository.deleteAll();
 
-        // Convert the best individual into OptimizedRoute entities
+        // Convert best individual into OptimizedRoute entities (saving real Lat/Lng)
         List<OptimizedRoute> savedRoutes = new ArrayList<>();
         
         for (int v = 0; v < activeVehicles.size(); v++) {
@@ -157,79 +227,115 @@ public class RouteOptimizationService {
                 continue;
             }
 
-            // Construct exact coordinates path and calculate metrics
-            List<double[]> fullGridPath = new ArrayList<>();
+            List<double[]> fullRealCoordsPath = new ArrayList<>();
             StringBuilder sequenceBuilder = new StringBuilder();
 
-            double lastX = depot.getX();
-            double lastY = depot.getY();
+            double lastRealX = depot.getX();
+            double lastRealY = depot.getY();
             
-            // Add depot starting point to full path
-            fullGridPath.add(new double[]{lastX, lastY});
+            fullRealCoordsPath.add(new double[]{lastRealX, lastRealY});
 
-            double totalDistance = 0.0;
-            double currentTime = 8.0; // Start at 8:00 AM
-            double totalDuration = 0.0;
+            double totalDistanceKm = 0.0;
+            double currentTime = 8.0;
 
             for (int idx = 0; idx < stopIndices.size(); idx++) {
                 int stopNodeIdx = stopIndices.get(idx);
                 DeliveryStop stop = pendingStops.get(stopNodeIdx - 1);
 
-                // Add to sequence string
                 if (idx > 0) sequenceBuilder.append(",");
                 sequenceBuilder.append(stop.getId());
 
-                // Path from last point to this stop
-                List<double[]> leg = pathfinder.findPath(lastX, lastY, stop.getX(), stop.getY(), trafficZones);
+                // Run pathfinder on scaled coords
+                double sxLast = (lastRealX - fMinLng) / fLngSpan * 100.0;
+                double syLast = (lastRealY - fMinLat) / fLatSpan * 100.0;
+                double sxStop = (stop.getX() - fMinLng) / fLngSpan * 100.0;
+                double syStop = (stop.getY() - fMinLat) / fLatSpan * 100.0;
+
+                List<double[]> leg = pathfinder.findPath(sxLast, syLast, sxStop, syStop, scaledTrafficZones);
                 
-                // Add coordinates (skipping first one to avoid duplicates)
-                for (int p = (fullGridPath.isEmpty() ? 0 : 1); p < leg.size(); p++) {
-                    fullGridPath.add(leg.get(p));
+                // Translate scaled path back to real Lat/Lng and append to full route coordinates
+                for (int p = 1; p < leg.size(); p++) {
+                    double[] pt = leg.get(p);
+                    double rx = fMinLng + (pt[0] / 100.0) * fLngSpan;
+                    double ry = fMinLat + (pt[1] / 100.0) * fLatSpan;
+                    fullRealCoordsPath.add(new double[]{rx, ry});
                 }
 
-                double legDist = pathfinder.getPathCost(leg, trafficZones);
-                double legTime = legDist / vehicle.getSpeed();
+                // Compute real leg distance and travel time
+                double legRealDist = 0.0;
+                for (int p = 0; p < leg.size() - 1; p++) {
+                    double[] pt1 = leg.get(p);
+                    double[] pt2 = leg.get(p + 1);
+                    double rx1 = fMinLng + (pt1[0] / 100.0) * fLngSpan;
+                    double ry1 = fMinLat + (pt1[1] / 100.0) * fLatSpan;
+                    double rx2 = fMinLng + (pt2[0] / 100.0) * fLngSpan;
+                    double ry2 = fMinLat + (pt2[1] / 100.0) * fLatSpan;
+                    double stepDist = calculateRealDistanceKm(ry1, rx1, ry2, rx2);
+                    
+                    double mx = (rx1 + rx2) / 2.0;
+                    double my = (ry1 + ry2) / 2.0;
+                    double trafficMultiplier = getTrafficMultiplier(mx, my, trafficZones);
+                    legRealDist += stepDist * trafficMultiplier;
+                }
 
-                totalDistance += legDist;
+                double legTime = legRealDist / vehicle.getSpeed();
+                totalDistanceKm += legRealDist;
                 currentTime += legTime;
 
                 if (currentTime < stop.getTimeWindowStart()) {
-                    currentTime = stop.getTimeWindowStart(); // waits
+                    currentTime = stop.getTimeWindowStart();
                 }
-                
                 currentTime += stop.getServiceTime();
 
-                lastX = stop.getX();
-                lastY = stop.getY();
+                lastRealX = stop.getX();
+                lastRealY = stop.getY();
             }
 
             // Path back to depot
-            List<double[]> returnLeg = pathfinder.findPath(lastX, lastY, depot.getX(), depot.getY(), trafficZones);
+            double sxLast = (lastRealX - fMinLng) / fLngSpan * 100.0;
+            double syLast = (lastRealY - fMinLat) / fLatSpan * 100.0;
+            double sxDepot = (depot.getX() - fMinLng) / fLngSpan * 100.0;
+            double syDepot = (depot.getY() - fMinLat) / fLatSpan * 100.0;
+
+            List<double[]> returnLeg = pathfinder.findPath(sxLast, syLast, sxDepot, syDepot, scaledTrafficZones);
             for (int p = 1; p < returnLeg.size(); p++) {
-                fullGridPath.add(returnLeg.get(p));
+                double[] pt = returnLeg.get(p);
+                double rx = fMinLng + (pt[0] / 100.0) * fLngSpan;
+                double ry = fMinLat + (pt[1] / 100.0) * fLatSpan;
+                fullRealCoordsPath.add(new double[]{rx, ry});
             }
-            double returnDist = pathfinder.getPathCost(returnLeg, trafficZones);
-            totalDistance += returnDist;
-            currentTime += (returnDist / vehicle.getSpeed());
 
-            totalDuration = currentTime - 8.0; // Total duration in hours
-            
-            // Financial calculations
-            double totalCost = totalDistance * vehicle.getCostPerKm();
+            double returnRealDist = 0.0;
+            for (int p = 0; p < returnLeg.size() - 1; p++) {
+                double[] pt1 = returnLeg.get(p);
+                double[] pt2 = returnLeg.get(p + 1);
+                double rx1 = fMinLng + (pt1[0] / 100.0) * fLngSpan;
+                double ry1 = fMinLat + (pt1[1] / 100.0) * fLatSpan;
+                double rx2 = fMinLng + (pt2[0] / 100.0) * fLngSpan;
+                double ry2 = fMinLat + (pt2[1] / 100.0) * fLatSpan;
+                double stepDist = calculateRealDistanceKm(ry1, rx1, ry2, rx2);
+                
+                double mx = (rx1 + rx2) / 2.0;
+                double my = (ry1 + ry2) / 2.0;
+                double trafficMultiplier = getTrafficMultiplier(mx, my, trafficZones);
+                returnRealDist += stepDist * trafficMultiplier;
+            }
 
-            // CO2 emissions calculations: liters per km * emissions/liter * km
-            // fuelConsumptionRate is per 100km, so divide by 100
-            double fuelUsed = (totalDistance / 100.0) * vehicle.getFuelConsumptionRate();
-            double totalCo2 = fuelUsed * 2.62; // 2.62kg of CO2 per liter of fuel
+            totalDistanceKm += returnRealDist;
+            currentTime += (returnRealDist / vehicle.getSpeed());
 
-            // Serialize path to coordinates JSON
-            String pathJson = serializePath(fullGridPath);
+            double totalDuration = currentTime - 8.0;
+            double totalCost = totalDistanceKm * vehicle.getCostPerKm();
+            double fuelUsed = (totalDistanceKm / 100.0) * vehicle.getFuelConsumptionRate();
+            double totalCo2 = fuelUsed * 2.62;
+
+            String pathJson = serializePath(fullRealCoordsPath);
 
             OptimizedRoute route = new OptimizedRoute(
                     null, 
                     vehicle, 
                     sequenceBuilder.toString(), 
-                    totalDistance, 
+                    totalDistanceKm, 
                     totalDuration, 
                     totalCost, 
                     totalCo2, 
@@ -241,6 +347,26 @@ public class RouteOptimizationService {
         }
 
         return savedRoutes;
+    }
+
+    private double calculateRealDistanceKm(double lat1, double lng1, double lat2, double lng2) {
+        double latMid = (lat1 + lat2) * Math.PI / 180.0;
+        double dLat = (lat2 - lat1) * 111.32;
+        double dLng = (lng2 - lng1) * 111.32 * Math.cos(latMid);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+
+    private double getTrafficMultiplier(double x, double y, List<TrafficZone> trafficZones) {
+        double multiplier = 1.0;
+        for (TrafficZone zone : trafficZones) {
+            double dist = Math.sqrt(Math.pow(x - zone.getX(), 2) + Math.pow(y - zone.getY(), 2));
+            if (dist <= zone.getRadius()) {
+                double influence = (zone.getRadius() - dist) / zone.getRadius();
+                double severity = 1.0 + (zone.getSeverity() - 1.0) * influence;
+                multiplier = Math.max(multiplier, severity);
+            }
+        }
+        return multiplier;
     }
 
     private String serializePath(List<double[]> path) {
