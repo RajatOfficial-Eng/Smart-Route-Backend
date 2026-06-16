@@ -1,6 +1,11 @@
 package com.routeopt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Entity
 @Table(name = "delivery_stops")
@@ -9,13 +14,29 @@ public class DeliveryStop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Stop name cannot be blank")
     private String name;
+
+    @DecimalMin(value = "-180.0", message = "Longitude must be >= -180.0")
+    @DecimalMax(value = "180.0", message = "Longitude must be <= 180.0")
     private double x;
+
+    @DecimalMin(value = "-90.0", message = "Latitude must be >= -90.0")
+    @DecimalMax(value = "90.0", message = "Latitude must be <= 90.0")
     private double y;
+
+    @Positive(message = "Demand must be positive")
     private double demand;
+
+    @PositiveOrZero(message = "Time window start must be >= 0")
     private double timeWindowStart;
+
+    @PositiveOrZero(message = "Time window end must be >= 0")
     private double timeWindowEnd;
+
+    @PositiveOrZero(message = "Service time must be >= 0")
     private double serviceTime;
+
     private String status;
 
     // Constructors

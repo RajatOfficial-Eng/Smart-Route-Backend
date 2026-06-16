@@ -5,6 +5,9 @@ import com.routeopt.model.OptimizedRoute;
 import com.routeopt.repository.DepotRepository;
 import com.routeopt.repository.OptimizedRouteRepository;
 import com.routeopt.service.RouteOptimizationService;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +18,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin // Fail-safe fallback annotation for CORS
 public class RouteController {
+
+    private static final Logger log = LoggerFactory.getLogger(RouteController.class);
 
     @Autowired
     private RouteOptimizationService optimizationService;
@@ -35,8 +39,7 @@ public class RouteController {
         List<OptimizedRoute> routes = optimizationService.optimizeRoutes(algorithm);
         long endTime = System.currentTimeMillis();
         
-        // Log optimization time (for metrics visualization)
-        System.out.println("Optimization completed using " + algorithm + " in " + (endTime - startTime) + " ms");
+        log.info("Optimization completed using {} in {} ms", algorithm, (endTime - startTime));
         return ResponseEntity.ok(routes);
     }
 
@@ -73,7 +76,7 @@ public class RouteController {
     }
 
     @PutMapping("/depot")
-    public ResponseEntity<Depot> updateDepot(@RequestBody Depot updatedDepot) {
+    public ResponseEntity<Depot> updateDepot(@Valid @RequestBody Depot updatedDepot) {
         List<Depot> depots = depotRepository.findAll();
         if (depots.isEmpty()) {
             return ResponseEntity.notFound().build();

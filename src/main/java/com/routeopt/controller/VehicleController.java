@@ -2,6 +2,9 @@ package com.routeopt.controller;
 
 import com.routeopt.model.Vehicle;
 import com.routeopt.repository.VehicleRepository;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,8 +13,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/vehicles")
-@CrossOrigin
 public class VehicleController {
+
+    private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     @Autowired
     private VehicleRepository vehicleRepository;
@@ -22,12 +26,14 @@ public class VehicleController {
     }
 
     @PostMapping
-    public ResponseEntity<Vehicle> createVehicle(@RequestBody Vehicle vehicle) {
+    public ResponseEntity<Vehicle> createVehicle(@Valid @RequestBody Vehicle vehicle) {
+        log.info("Creating vehicle: {}", vehicle.getName());
         return ResponseEntity.ok(vehicleRepository.save(vehicle));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Vehicle> updateVehicle(@PathVariable Long id, @RequestBody Vehicle vehicleDetails) {
+    public ResponseEntity<Vehicle> updateVehicle(@PathVariable Long id, @Valid @RequestBody Vehicle vehicleDetails) {
+        log.info("Updating vehicle with ID: {}", id);
         return vehicleRepository.findById(id)
                 .map(vehicle -> {
                     vehicle.setName(vehicleDetails.getName());
@@ -43,6 +49,7 @@ public class VehicleController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVehicle(@PathVariable Long id) {
+        log.info("Deleting vehicle with ID: {}", id);
         return vehicleRepository.findById(id)
                 .map(vehicle -> {
                     vehicleRepository.delete(vehicle);

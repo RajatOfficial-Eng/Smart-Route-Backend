@@ -1,6 +1,9 @@
 package com.routeopt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
 
 @Entity
 @Table(name = "traffic_zones")
@@ -9,9 +12,18 @@ public class TrafficZone {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @DecimalMin(value = "-180.0", message = "Longitude must be >= -180.0")
+    @DecimalMax(value = "180.0", message = "Longitude must be <= 180.0")
     private double x;
+
+    @DecimalMin(value = "-90.0", message = "Latitude must be >= -90.0")
+    @DecimalMax(value = "90.0", message = "Latitude must be <= 90.0")
     private double y;
+
+    @Positive(message = "Radius must be positive")
     private double radius;
+
+    @Positive(message = "Severity must be positive")
     private double severity;
 
     // Constructors

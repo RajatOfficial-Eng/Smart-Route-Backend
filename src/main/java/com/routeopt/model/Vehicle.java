@@ -1,6 +1,9 @@
 package com.routeopt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Entity
 @Table(name = "vehicles")
@@ -9,11 +12,21 @@ public class Vehicle {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Vehicle name cannot be blank")
     private String name;
+
+    @Positive(message = "Capacity must be positive")
     private double capacity;
+
+    @Positive(message = "Fuel consumption rate must be positive")
     private double fuelConsumptionRate;
+
+    @PositiveOrZero(message = "Cost per km must be positive or zero")
     private double costPerKm;
+
+    @Positive(message = "Speed must be positive")
     private double speed;
+
     private boolean active;
 
     // Constructors

@@ -3,6 +3,8 @@ package com.routeopt.service;
 import com.routeopt.model.*;
 import com.routeopt.repository.*;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +12,8 @@ import java.util.*;
 
 @Service
 public class RouteOptimizationService {
+
+    private static final Logger log = LoggerFactory.getLogger(RouteOptimizationService.class);
 
     @Autowired
     private DepotRepository depotRepository;
@@ -33,11 +37,13 @@ public class RouteOptimizationService {
     public void init() {
         // Automatically seed data if db is empty
         if (depotRepository.count() == 0) {
+            log.info("Database empty on startup. Triggering auto-seeding...");
             seedDatabase();
         }
     }
 
     public void seedDatabase() {
+        log.info("Seeding database with default Delhi/NCR data hubs, vehicles, stops, and traffic zones...");
         // Clear existing
         optimizedRouteRepository.deleteAll();
         deliveryStopRepository.deleteAll();
@@ -73,6 +79,7 @@ public class RouteOptimizationService {
     }
 
     public void clearWorkspace() {
+        log.info("Clearing optimized routes, delivery stops, vehicles, and traffic zones...");
         optimizedRouteRepository.deleteAll();
         deliveryStopRepository.deleteAll();
         vehicleRepository.deleteAll();
@@ -84,6 +91,7 @@ public class RouteOptimizationService {
     }
 
     public List<OptimizedRoute> optimizeRoutes(String algorithm) {
+        log.info("Starting route optimization using algorithm: {}", algorithm);
         // Fetch inputs
         List<Depot> depots = depotRepository.findAll();
         if (depots.isEmpty()) return new ArrayList<>();
